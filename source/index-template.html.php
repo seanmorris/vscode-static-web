@@ -29,12 +29,16 @@
 		
 		<!-- Builtin Extensions -->		
 		<meta id="vscode-workbench-builtin-extensions" data-settings="<?php
+			
+			$skipExtensions = explode(',', getenv('VSCODE_SKIP_EXTENSIONS'));
+
 			$extDirs = array_filter(
 				scanDir('./public/extensions')
 				, fn($name) => (
-					file_exists('./public/extensions/' . $name . '/package.json')
+					!in_array($name, $skipExtensions)
 					&& $name !== '.'
 					&& $name !== '..'
+					&& file_exists('./public/extensions/' . $name . '/package.json')
 				)
 			);
 			

@@ -1,4 +1,5 @@
 VSCODE_TAG=1.89.0
+VSCODE_SKIP_EXTENSIONS=
 
 .PHONY: all serve clean extensions
 
@@ -36,7 +37,7 @@ journal/.static-build: journal/.compiled
 	@ echo "\e[33;4mBuilding Static Distribution...\e[0m"
 	cd public && rm -rf out node_modules resources extensions;
 	cd third_party/vscode && {\
-		cp -rf out-build ../../public/out;\
+		cp -rf out ../../public/out;\
 		cp -rf node_modules resources extensions ../../public;\
 	}
 	touch journal/.static-build
@@ -44,17 +45,21 @@ journal/.static-build: journal/.compiled
 ## Build the index.html file: ##
 public/index.html: journal/.static-build source/index-template.html.php extensions
 	@ echo "\e[33;4mGenerating index.html file...\e[0m"
-	php source/index-template.html.php > public/index.html;
+	VSCODE_SKIP_EXTENSIONS=${VSCODE_SKIP_EXTENSIONS} php source/index-template.html.php > public/index.html;
 
 ## Clean the repo: ##
 clean:
 	rm -rf public/* third_party/* journal/*
+
+## Clean the static assets : ##
+clean-static:
+	rm -rf public/* journal/.static-build
 
 ## Run the testing server: ##
 serve: all
 	cd public/ && npx http-server
 	
 ## Copy extra extensions to public/extensions/ ##
-extensions:
+extensions: journal/.static-build
 	cp -rf extra_extensions/* public/extensions/
 	touch journal/.extensions
