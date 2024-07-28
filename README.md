@@ -42,7 +42,7 @@ Once you're ready to run your extension, just run
 
 ```bash
 $ make clean-static
-make serve
+$ make serve
 ```
 
 ... and refresh the page.
