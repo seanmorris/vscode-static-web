@@ -41,7 +41,8 @@ Otherwise, your extension will not run on the web version of VS Code.
 Once you're ready to run your extension, just run
 
 ```bash
-$ make clean-static make serve
+$ make clean-static
+make serve
 ```
 
 ... and refresh the page.
