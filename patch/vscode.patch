@@ -1,0 +1,21 @@
+diff --git a/src/vs/code/browser/workbench/workbench.ts b/src/vs/code/browser/workbench/workbench.ts
+index f887502..695d937 100644
+--- a/src/vs/code/browser/workbench/workbench.ts
++++ b/src/vs/code/browser/workbench/workbench.ts
+@@ -22,6 +22,8 @@ import { AuthenticationSessionInfo } from 'vs/workbench/services/authentication/
+ import type { IURLCallbackProvider } from 'vs/workbench/services/url/browser/urlService';
+ import { create } from 'vs/workbench/workbench.web.main';
+ 
++declare const window: any;
++
+ interface ISecretStorageCrypto {
+ 	seal(data: string): Promise<string>;
+ 	unseal(data: string): Promise<string>;
+@@ -575,6 +577,7 @@ function readCookie(name: string): string | undefined {
+ 		? new ServerKeyedAESCrypto(secretStorageKeyPath) : new TransparentCrypto();
+ 
+ 	// Create workbench
++	window.vscodeAlterConfig && window.vscodeAlterConfig(config);
+ 	create(mainWindow.document.body, {
+ 		...config,
+ 		windowIndicator: config.windowIndicator ?? { label: '$(remote)', tooltip: `${product.nameShort} Web` },
