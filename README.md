@@ -15,7 +15,7 @@ make
 ## Start the dev server
 
 ```bash
-$ make serve
+make serve
 ```
 
 ## Creating an extension
@@ -23,8 +23,8 @@ $ make serve
 Create a new directory inside `extra_extensions` and use [Yeoman](https://yeoman.io/) to scaffold your extension:
 
 ```bash
-$ cd extra_extensions
-$ npx --package yo --package generator-code -- yo code
+cd extra_extensions
+npx --package yo --package generator-code -- yo code
 ```
 
 ***Important!***
