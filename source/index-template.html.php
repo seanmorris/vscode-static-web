@@ -27,77 +27,8 @@
 			}"
 		>
 		<script>
-			const incomplete = new Map;
-			const originSymbol = Symbol('origin');
-			const recipientSymbol = Symbol('recipient');
-
-			const onMessage = event => {
-				if(event.data.re && incomplete.has(event.data.re))
-				{
-					const callbacks = incomplete.get(event.data.re);
-
-					if(!event.data.error)
-					{
-						callbacks[0](event.data.result);
-					}
-					else
-					{
-						callbacks[1](event.data.error);
-					}
-				}
-			};
-
-			const sendMessage = (client, action, params, accept, reject) => {
-				const token  = crypto.randomUUID();
-				const result = new Promise((_accept, _reject) => [accept, reject] = [_accept, _reject]);
-
-				incomplete.set(token, [accept, reject]);
-
-				let recipient = client[recipientSymbol];
-
-				if(!(recipient instanceof Promise))
-				{
-					recipient = Promise.resolve(recipient);
-				}
-
-				recipient.then(recipient => recipient.postMessage({action, params, token}, client[originSymbol]));
-
-				return result;
-			};
-
-			class Client
-			{
-				constructor(recipient, origin)
-				{
-					this[originSymbol] = origin;
-					this[recipientSymbol] = recipient;
-
-					return new Proxy(this, {
-						 get: (target, key, receiver) => {
-
-							if(typeof key === 'symbol')
-							{
-								return target[key];
-							}
-
-							return (...params)  => sendMessage(receiver, key, params);
-						}
-					});
-				}
-			}
-
-			const client = new Client(window.parent ?? window.opener, 'http://localhost:3333');
-
-			window.addEventListener('message', onMessage);
-
 			window.vscodeAlterConfig = (config) => {
-				config.commands = config.commands || [];
-				config.commands.push(
-					{
-						id: "fileBus.call",
-						handler: (method, ...args) => client[method](...args)
-					},
-				);
+				
 			}
 		</script>
 		<!-- Builtin Extensions -->
