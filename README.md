@@ -7,9 +7,9 @@ Build the static assets to serve VS Code for the web.
 Pull the code & build the project:
 
 ```bash
-$ git clone https://github.com/seanmorris/vscode-static-web.git
-$ cd vscode-web-static
-$ make
+git clone https://github.com/seanmorris/vscode-static-web.git
+cd vscode-static-web
+make
 ```
 
 ## Start the dev server
