@@ -1,6 +1,66 @@
 #!/usr/bin/env php
 <!-- Copyright (C) Microsoft Corporation. All rights reserved. -->
 <!-- Modifications for EDUCATIONAL PURPOSES by Sean Morris. -->
+<?php
+$skipExtensions = explode(',', getenv('VSCODE_SKIP_EXTENSIONS'));
+
+$extDirs = array_filter(
+	scanDir('./public/extensions')
+	, fn($name) => (
+		!in_array($name, $skipExtensions)
+		&& $name !== '.'
+		&& $name !== '..'
+		&& file_exists('./public/extensions/' . $name . '/package.json')
+	)
+);
+
+$hacks = array_map(
+	function($name){
+		$packageDir = './public/extensions/' . $name;
+		$packageJSONFile = $packageDir . '/package.json';
+		$packageJSON = json_decode(file_get_contents($packageJSONFile));
+
+		if(!empty($packageJSON->hacks))
+		{
+			return array_map(
+				function($file) use($packageDir) {
+					return $packageDir . '/' . $file;
+				}
+				, $packageJSON->hacks
+			);
+		}
+
+		return [];
+	}
+	, array_values($extDirs)
+);
+
+$packages = array_map(
+	function($name)
+	{
+		$packageJSONFile = './public/extensions/' . $name . '/package.json';
+		$packageNLSFile  = './public/extensions/' . $name . '/package.nls.json';
+
+		$packageJSON = json_decode(file_get_contents($packageJSONFile));
+
+		$entry = ['extensionPath' => $name];
+
+		if(file_exists($packageJSONFile))
+		{
+			$packageJSON  = json_decode(file_get_contents($packageJSONFile));
+			$entry ['packageJSON'] = $packageJSON;
+		}
+
+		if(file_exists($packageNLSFile))
+		{
+			$packageNLS  = json_decode(file_get_contents($packageNLSFile));
+			$entry ['packageNLS'] = $packageNLS;
+		}
+
+		return $entry;
+	}
+	, array_values($extDirs)
+); ?>
 <!DOCTYPE html>
 <html>
 	<head>
@@ -27,54 +87,20 @@
 			}"
 		>
 		<script>
-			window.vscodeAlterConfig = (config) => {
-				
-			}
+			vscodeAlterConfigCallbacks = [];
+<?php
+foreach($hacks as $packageHacks):
+foreach($packageHacks as $hack):?>
+			vscodeAlterConfigCallbacks.push(<?php echo file_get_contents($hack); ?>);
+<?php endforeach; endforeach; ?>
+
+			window.vscodeAlterConfig = config => vscodeAlterConfigCallbacks.map(callback => callback(config));
 		</script>
+
 		<!-- Builtin Extensions -->
-		<meta id="vscode-workbench-builtin-extensions" data-settings="<?php
-
-			$skipExtensions = explode(',', getenv('VSCODE_SKIP_EXTENSIONS'));
-
-			$extDirs = array_filter(
-				scanDir('./public/extensions')
-				, fn($name) => (
-					!in_array($name, $skipExtensions)
-					&& $name !== '.'
-					&& $name !== '..'
-					&& file_exists('./public/extensions/' . $name . '/package.json')
-				)
-			);
-
-			$packages = array_map(
-				function($name)
-				{
-					$packageJSONFile = './public/extensions/' . $name . '/package.json';
-					$packageNLSFile  = './public/extensions/' . $name . '/package.nls.json';
-
-					$packageJSON = json_decode(file_get_contents($packageJSONFile));
-
-					$entry = ['extensionPath' => $name];
-
-					if(file_exists($packageJSONFile))
-					{
-						$packageJSON  = json_decode(file_get_contents($packageJSONFile));
-						$entry ['packageJSON'] = $packageJSON;
-					}
-
-					if(file_exists($packageNLSFile))
-					{
-						$packageNLS  = json_decode(file_get_contents($packageNLSFile));
-						$entry ['packageNLS'] = $packageNLS;
-					}
-
-					return $entry;
-				}
-				, array_values($extDirs)
-			);
-
-			echo str_replace('"', '&quot;', json_encode($packages, JSON_PRETTY_PRINT));
-		?>">
+		<meta
+			id="vscode-workbench-builtin-extensions"
+			data-settings="<?php echo str_replace('"', '&quot;', json_encode($packages, JSON_PRETTY_PRINT));?>">
 
 		<!-- Workbench Auth Session -->
 		<meta id="vscode-workbench-auth-session" data-settings="" />

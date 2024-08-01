@@ -38,8 +38,8 @@ journal/.static-build: journal/.compiled
 	@ echo "\033[33;4mBuilding Static Distribution...\033[0m"
 	cd public && rm -rf out node_modules resources extensions;
 	cd third_party/vscode && {\
-		cp -rf out ../../public/out;\
-		cp -rf node_modules resources extensions ../../public;\
+		cp -rfv node_modules resources extensions ../../public;\
+		cp -rfv out ../../public/out;\
 	}
 	touch journal/.static-build
 
@@ -62,5 +62,5 @@ serve: all
 	
 ## Copy extra extensions to public/extensions/ ##
 extensions: journal/.static-build
-	cp -rf extra_extensions/* public/extensions/
+	- cp -rf extra_extensions/* public/extensions/
 	touch journal/.extensions
