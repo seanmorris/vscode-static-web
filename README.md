@@ -38,11 +38,10 @@ Otherwise, your extension will not run on the web version of VS Code.
 }
 ```
 
-Once you're ready to run your extension, just run
+Once you're ready to run your extension, just hit ctrl+c in your terminal and re-run
 
 ```bash
-$ make clean-static
-$ make serve
+make serve
 ```
 
 ... and refresh the page.
