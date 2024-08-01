@@ -7,7 +7,7 @@ all: public/index.html
 
 ## Download the code ##
 third_party/vscode/.gitignore:
-	@ echo "\e[33;4mDownloading VS Code...\e[0m";
+	@ echo "\x1B[33;4mDownloading VS Code...\x1B[0m";
 	git clone https://github.com/microsoft/vscode.git third_party/vscode\
 		--branch ${VSCODE_TAG}\
 		--single-branch\
@@ -16,7 +16,8 @@ third_party/vscode/.gitignore:
 ## Pull the dependencies ##
 journal/.pull-dependencies: third_party/vscode/.gitignore
 	cd third_party/vscode && {\
-		echo "\e[33;4mPulling dependencies...\e[0m";\
+		echo "\x1B[33;4mPulling dependencies...\x1B[0m";\
+		git apply --no-index ../../patch/vscode.patch;\
 		yarn;\
 	}
 	touch journal/.pull-dependencies;
@@ -24,7 +25,7 @@ journal/.pull-dependencies: third_party/vscode/.gitignore
 ## Compile the program ##
 journal/.compiled: journal/.pull-dependencies
 	cd third_party/vscode && {\
-		echo "\e[33;4mBuilding VS Code...\e[0m";\
+		echo "\x1B[33;4mBuilding VS Code...\x1B[0m";\
 		yarn compile;\
 		yarn compile-web;\
 		yarn compile-build;\
@@ -34,7 +35,7 @@ journal/.compiled: journal/.pull-dependencies
 
 ## Copy the static assets to public/ ##
 journal/.static-build: journal/.compiled
-	@ echo "\e[33;4mBuilding Static Distribution...\e[0m"
+	@ echo "\x1B[33;4mBuilding Static Distribution...\x1B[0m"
 	cd public && rm -rf out node_modules resources extensions;
 	cd third_party/vscode && {\
 		cp -rf out ../../public/out;\
@@ -44,7 +45,7 @@ journal/.static-build: journal/.compiled
 
 ## Build the index.html file: ##
 public/index.html: journal/.static-build source/index-template.html.php extensions
-	@ echo "\e[33;4mGenerating index.html file...\e[0m"
+	@ echo "\x1B[33;4mGenerating index.html file...\x1B[0m"
 	VSCODE_SKIP_EXTENSIONS=${VSCODE_SKIP_EXTENSIONS} php source/index-template.html.php > public/index.html;
 
 ## Clean the repo: ##
