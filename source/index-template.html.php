@@ -110,9 +110,9 @@ foreach($hacks as $packageHacks):
 foreach($packageHacks as $hack):?>
 			vscodeAlterConfigCallbacks.push(<?php echo file_get_contents($hack); ?>);
 			<?php endforeach; endforeach; ?>
-			window.vscode = null;
+			window.vscodeEditor = null;
 			window.vscodeExposeEditor = editor => {
-				window.vscode = editor;
+				window.vscodeEditor = editor;
 			};
 			window.vscodeAlterConfig = config => {
 				config.commands = config.commands || [];
@@ -145,7 +145,9 @@ foreach($packageHacks as $hack):?>
 	</head>
 
 	<body aria-label="">
-		<div id = "loading-status" style = "position: absolute; z-index: -1; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items:flex-start; white-space: pre; overflow: hidden; font-size: 1rem; font-family: monospace; padding: 1rem; box-sizing: border-box; background: black; color: white;"></div>
+		<div
+			id = "loading-status"
+			style = "position: absolute; z-index: -1; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items:flex-start; white-space: pre; overflow: hidden; font-size: 1rem; font-family: monospace; padding: 1rem; box-sizing: border-box; background: black; color: white;"></div>
 	</body>
 
 	<!-- Startup (do not modify order of script tags!) -->
