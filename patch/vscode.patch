@@ -19,3 +19,15 @@ index f887502..695d937 100644
  	create(mainWindow.document.body, {
  		...config,
  		windowIndicator: config.windowIndicator ?? { label: '$(remote)', tooltip: `${product.nameShort} Web` },
+diff --git a/src/vs/workbench/browser/web.factory.ts b/src/vs/workbench/browser/web.factory.ts
+index f1ff86d..948006c 100644
+--- a/src/vs/workbench/browser/web.factory.ts
++++ b/src/vs/workbench/browser/web.factory.ts
+@@ -60,6 +60,7 @@ export function create(domElement: HTMLElement, options: IWorkbenchConstructionO
+ 	// Startup workbench and resolve waiters
+ 	let instantiatedWorkbench: IWorkbench | undefined = undefined;
+ 	new BrowserMain(domElement, options).open().then(workbench => {
++		(globalThis as any).vscodeExposeEditor && (globalThis as any).vscodeExposeEditor(workbench);
+ 		instantiatedWorkbench = workbench;
+ 		workbenchPromise.complete(workbench);
+ 	});
