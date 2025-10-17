@@ -48,11 +48,6 @@ $hacks = array_map(
 $packages = array_filter(array_map(
 	function($name) use($skipExtensions)
 	{
-		if(in_array($name, $skipExtensions))
-		{
-			return false;
-		}
-
 		$packageJSONFile = './public/extensions/' . $name . '/package.json';
 		$packageNLSFile  = './public/extensions/' . $name . '/package.nls.json';
 
@@ -114,8 +109,11 @@ $packages = array_filter(array_map(
 foreach($hacks as $packageHacks):
 foreach($packageHacks as $hack):?>
 			vscodeAlterConfigCallbacks.push(<?php echo file_get_contents($hack); ?>);
-<?php endforeach; endforeach; ?>
-
+			<?php endforeach; endforeach; ?>
+			window.vscode = null;
+			window.vscodeExposeEditor = editor => {
+				window.vscode = editor;
+			};
 			window.vscodeAlterConfig = config => {
 				config.commands = config.commands || [];
 				vscodeAlterConfigCallbacks.map(callback => callback(config));
@@ -201,6 +199,6 @@ foreach($packageHacks as $hack):?>
 		});
 		observer.observe(document.head, { attributes: true, childList: true, subtree: true });
 		// observer.disconnect();
+		require(['vs/code/browser/workbench/workbench'], function() {});
 	</script>
-	<script> require(['vs/code/browser/workbench/workbench'], function() {}); </script>
 </html>

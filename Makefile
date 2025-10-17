@@ -47,9 +47,10 @@ journal/.static-build: journal/.compiled
 	@ echo "\033[33;4mBuilding Static Distribution...\033[0m"
 	cd public && rm -rf out node_modules resources extensions;
 	cd third_party/vscode && {\
-		cp -prfv node_modules resources extensions ../../public;\
-		cp -prfv out ../../public/out;\
-		echo -n ${VSCODE_SKIP_EXTENSIONS} | xargs -d ' ' -I{} rm -rfv ../../public/extensions/{};\
+		find out node_modules resources extensions -type l ! -exec test -e {} \; -delete;\
+		cp -Pprf out ../../public/out;\
+		cp -Pprf node_modules resources extensions ../../public;\
+		cp -rf ../../extra_extensions/* ../../public/extensions/;\
 	}
 	touch journal/.static-build
 
@@ -73,10 +74,10 @@ clean-static:
 
 ## Run the testing server: ##
 serve: all
-	cd public/ && http-server
+	cd public/ && npx http-server
 	
 ## Copy extra extensions to public/extensions/ ##
 extensions: journal/.static-build
 	- cp -rf extra_extensions/* public/extensions/
-	echo -n ${VSCODE_SKIP_EXTENSIONS} | xargs -d ' ' -I{} rm -rf ./public/extensions/{};\
+	echo -n ${VSCODE_SKIP_EXTENSIONS} | xargs -I{} rm -rf ./public/extensions/{};\
 	touch journal/.extensions
