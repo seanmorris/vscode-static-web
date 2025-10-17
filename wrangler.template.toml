@@ -1,0 +1,6 @@
+name = "${PROJECT_NAME}"
+pages_build_output_dir = "public"
+
+r2_buckets = [
+  { binding = "BUCKET", bucket_name = "${BUCKET_NAME}" }
+]

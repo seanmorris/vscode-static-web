@@ -63,10 +63,6 @@ public/index.html: journal/.static-build source/index-template.html.php extensio
 	VSCODE_SERVICE_URL=${VSCODE_SERVICE_URL} \
 	VSCODE_ITEM_URL=${VSCODE_ITEM_URL} \
 	php source/index-template.html.php > public/index.html;
-
-deploy:
-	./r2.sh
-	npx wrangler pages deploy ./pages --project-name=oss-code --branch=master
 	
 ## Clean the repo: ##
 clean:

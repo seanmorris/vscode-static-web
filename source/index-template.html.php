@@ -3,7 +3,7 @@
 <!-- Modifications for EDUCATIONAL PURPOSES by Sean Morris. -->
 <?php
 $basePath = getenv('VSCODE_BASEPATH') ?: '';
-$skipExtensions = explode(',', getenv('VSCODE_SKIP_EXTENSIONS'));
+$skipExtensions = explode(' ', getenv('VSCODE_SKIP_EXTENSIONS'));
 
 $resourceUrlTemplate = getenv('VSCODE_RESOURCE_URL_TEMPLATE')
 	?: 'https://open-vsx.org/vscode/asset/{publisher}/{name}/{version}/Microsoft.VisualStudio.Code.WebResources/{path}';
