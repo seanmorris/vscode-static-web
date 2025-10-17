@@ -1,1 +1,6 @@
 .env
+.aws/
+.wrangler/
+wrangler.toml
+node_modules/
+public/
