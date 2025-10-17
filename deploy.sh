@@ -15,8 +15,8 @@ export AWS_CONFIG_FILE="$(dirname "$0")/.aws/config"
 
 aws s3 sync ./public s3://${BUCKET_NAME} \
     --endpoint-url="${ENDPOINT}" \
+    --exact-timestamps \
     --profile r2 \
-    --size-only \
     --delete
 
 npx wrangler pages deploy ./pages \
