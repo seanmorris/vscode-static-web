@@ -1,7 +1,13 @@
 -include .env
 
+ROOT_DIR:=$(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+EXTENSIONS_SKIP_FILE?=$(ROOT_DIR)/extensions-skip.list
+
 VSCODE_TAG?=1.89.0
-VSCODE_SKIP_EXTENSIONS?=
+ifneq ($(filter command line environment override,$(origin VSCODE_SKIP_EXTENSIONS)),)
+else
+VSCODE_SKIP_EXTENSIONS:=$(shell "$(ROOT_DIR)/scripts/read-extension-list.sh" "$(EXTENSIONS_SKIP_FILE)")
+endif
 VSCODE_BASEPATH?=
 
 VSCODE_RESOURCE_URL_TEMPLATE?=
@@ -58,11 +64,11 @@ journal/.static-build: journal/.compiled
 ## Build the index.html file: ##
 public/index.html: journal/.static-build source/index-template.html.php extensions
 	@ echo "\033[33;4mGenerating index.html file...\033[0m"
-	VSCODE_BASEPATH=${VSCODE_BASEPATH} \
-	VSCODE_SKIP_EXTENSIONS=${VSCODE_SKIP_EXTENSIONS} \
-	VSCODE_RESOURCE_URL_TEMPLATE=${VSCODE_RESOURCE_URL_TEMPLATE} \
-	VSCODE_SERVICE_URL=${VSCODE_SERVICE_URL} \
-	VSCODE_ITEM_URL=${VSCODE_ITEM_URL} \
+	VSCODE_BASEPATH="${VSCODE_BASEPATH}" \
+	VSCODE_SKIP_EXTENSIONS="${VSCODE_SKIP_EXTENSIONS}" \
+	VSCODE_RESOURCE_URL_TEMPLATE="${VSCODE_RESOURCE_URL_TEMPLATE}" \
+	VSCODE_SERVICE_URL="${VSCODE_SERVICE_URL}" \
+	VSCODE_ITEM_URL="${VSCODE_ITEM_URL}" \
 	php source/index-template.html.php > public/index.html;
 	
 ## Clean the repo: ##

@@ -134,7 +134,7 @@ foreach($packageHacks as $hack):?>
 		<!-- Builtin Extensions -->
 		<meta
 			id="vscode-workbench-builtin-extensions"
-			data-settings="<?php echo str_replace('"', '&quot;', json_encode($packages, JSON_PRETTY_PRINT));?>">
+			data-settings="<?php echo str_replace('"', '&quot;', json_encode($packages));?>">
 
 		<!-- Workbench Auth Session -->
 		<meta id="vscode-workbench-auth-session" data-settings="" />

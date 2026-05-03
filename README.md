@@ -88,6 +88,28 @@ make all serve
 
 ... and refresh the page.
 
+## Skipping extensions
+
+The shipped extension skip set now defaults from `extensions-skip.list`.
+
+To use that default list:
+
+```bash
+make all
+```
+
+To point the build at a different skip file:
+
+```bash
+make all EXTENSIONS_SKIP_FILE=/path/to/extensions-skip.list
+```
+
+To override the skip list directly for one build:
+
+```bash
+make all VSCODE_SKIP_EXTENSIONS="ext-a ext-b"
+```
+
 ## Publish
 
 Publishing is a two-part deploy:
