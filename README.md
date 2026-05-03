@@ -2,23 +2,6 @@
 
 Build the static assets to serve VS Code for the web.
 
-> ### I am giving up my bed for one night.
-> My Sleep Out helps youth facing homelessness find safe shelter and loving care at Covenant House. That care includes essential services like education, job training, medical care, mental health and substance use counseling, and legal aid — everything they need to build independent, sustainable futures.
->
-> By supporting my Sleep Out, you are supporting the dreams of young people overcoming homelessness.
->
-> <a href = "https://www.sleepout.org/participants/62915"><img width = "50%" alt="Donate to Covenant House" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fwww.sleepout.org%2Fapi%2F1.3%2Fparticipants%2F62915%3F_%3D1760039017428&query=%24.sumDonations&prefix=%24&suffix=%20Raised&style=for-the-badge&label=Sleep%20Out%3A%20NYC&link=https%3A%2F%2Fwww.sleepout.org%2Fparticipants%2F62915"></a>
->
-> Click here to help out: https://www.sleepout.org/participants/62915
->
-> More info: https://www.sleepout.org/ | https://www.covenanthouse.org/ | https://www.charitynavigator.org/ein/132725416
->
-> Together, we are working towards a future where every young person has a safe place to sleep.
->
-> Thank you.
->
-> *and now back to your documentation...*
-
 ## Usage
 
 Pull the code & build the project:
@@ -55,10 +38,49 @@ Otherwise, your extension will not run on the web version of VS Code.
 }
 ```
 
-Once you're ready to run your extension, just hit ctrl+c in your terminal and run
+Once you're ready to run your extension, just rebuild & restart the dev server:
 
 ```bash
 make all serve
 ```
 
 ... and refresh the page.
+
+## Publish
+
+Publishing is a two-part deploy:
+
+1. build the static VS Code bundle into `public/`
+2. sync `public/` to the configured R2 bucket and deploy the Pages worker from `pages/`
+
+The deploy script now runs the build for you, so the normal operator entrypoint is:
+
+```bash
+make deploy
+```
+
+The script expects a local `.env` file with at least:
+
+```bash
+PROJECT_NAME=...
+BUCKET_NAME=...
+ENDPOINT=...
+CLOUDFLARE_ACCOUNT_ID=...
+CLOUDFLARE_API_TOKEN=...
+```
+
+Optional deploy settings:
+
+```bash
+SOURCE_DIR=public
+PAGES_DIR=pages
+PAGES_BRANCH=master
+WRANGLER_VERSION=4.87.0
+```
+
+It also expects Cloudflare R2-compatible AWS credentials under `.aws/credentials`
+and `.aws/config`.
+
+Only runtime-ready files from `extra_extensions/` are published into
+`public/extensions/`. Local repo metadata and development dependencies like
+`.git/` and `node_modules/` are excluded from the deploy artifact.

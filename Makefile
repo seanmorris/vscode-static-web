@@ -8,7 +8,7 @@ VSCODE_RESOURCE_URL_TEMPLATE?=
 VSCODE_SERVICE_URL?=
 VSCODE_ITEM_URL?=
 
-.PHONY: all serve clean extensions
+.PHONY: all serve clean clean-static extensions deploy
 
 all: public/index.html
 
@@ -50,8 +50,9 @@ journal/.static-build: journal/.compiled
 		find out node_modules resources extensions -type l ! -exec test -e {} \; -delete;\
 		cp -Pprf out ../../public/out;\
 		cp -Pprf node_modules resources extensions ../../public;\
-		cp -rf ../../extra_extensions/* ../../public/extensions/;\
 	}
+	./sync-extra-extensions.sh ./extra_extensions ./public/extensions
+	find public -type l ! -exec test -e {} \; -delete
 	touch journal/.static-build
 
 ## Build the index.html file: ##
@@ -78,6 +79,12 @@ serve: all
 	
 ## Copy extra extensions to public/extensions/ ##
 extensions: journal/.static-build
-	- cp -rf extra_extensions/* public/extensions/
-	echo -n ${VSCODE_SKIP_EXTENSIONS} | xargs -I{} rm -rf ./public/extensions/{};\
+	./sync-extra-extensions.sh ./extra_extensions ./public/extensions
+	extensions_to_skip=$$(printf '%s' '${VSCODE_SKIP_EXTENSIONS}' | tr ',' ' ' | tr -d '"'); \
+	for extension in $${extensions_to_skip}; do rm -rf "./public/extensions/$${extension}"; done
+	find public -type l ! -exec test -e {} \; -delete
 	touch journal/.extensions
+
+## Build and deploy to Cloudflare Pages + R2 ##
+deploy: all
+	./deploy.sh
