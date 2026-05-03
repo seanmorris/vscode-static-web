@@ -8,7 +8,7 @@ VSCODE_RESOURCE_URL_TEMPLATE?=
 VSCODE_SERVICE_URL?=
 VSCODE_ITEM_URL?=
 
-.PHONY: all serve clean clean-static extensions deploy
+.PHONY: all serve clean clean-static extensions test test-smoke test-e2e deploy
 
 all: public/index.html
 
@@ -76,7 +76,19 @@ clean-static:
 ## Run the testing server: ##
 serve: all
 	cd public/ && npx http-server
-	
+
+## Run the project test suite ##
+test:
+	bash ./tests/run.sh
+
+## Run the browser E2E suite ##
+test-smoke:
+	bash ./tests/e2e/run.sh
+
+## Run the real built-site workbench E2E suite ##
+test-e2e:
+	bash ./tests/real-e2e/run.sh
+		
 ## Copy extra extensions to public/extensions/ ##
 extensions: journal/.static-build
 	./sync-extra-extensions.sh ./extra_extensions ./public/extensions

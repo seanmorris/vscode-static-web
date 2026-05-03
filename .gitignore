@@ -4,3 +4,5 @@
 wrangler.toml
 node_modules/
 public/
+*.log
+test-results/.last-run.json

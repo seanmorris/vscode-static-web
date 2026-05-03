@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_DIR="${1:-${ROOT_DIR}/extra_extensions}"
 DEST_DIR="${2:-${ROOT_DIR}/public/extensions}"
-MANIFEST="${ROOT_DIR}/journal/.extra-extensions.list"
+MANIFEST="${SYNC_EXTRA_EXTENSIONS_MANIFEST:-${ROOT_DIR}/journal/.extra-extensions.list}"
 
 mkdir -p "$DEST_DIR" "$(dirname "$MANIFEST")"
 

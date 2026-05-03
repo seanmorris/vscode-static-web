@@ -18,6 +18,48 @@ make
 make serve
 ```
 
+## Run the tests
+
+```bash
+make test
+```
+
+## Run the browser E2E tests
+
+```bash
+make test-e2e
+```
+
+This serves the real built `public/` site and waits for the VS Code workbench
+to boot.
+
+To watch the real built site boot in a visible Chromium window while the same
+workbench assertion runs:
+
+```bash
+E2E_VISIBLE=1 make test-e2e
+```
+
+This requires a desktop session with `DISPLAY` or `WAYLAND_DISPLAY` set.
+
+To keep that visible browser open after the workbench boots:
+
+```bash
+E2E_VISIBLE=1 E2E_KEEP_OPEN=1 make test-e2e
+```
+
+The older synthetic browser bootstrap check is still available as:
+
+```bash
+make test-smoke
+```
+
+To keep the visible browser open for inspection before the smoke test exits:
+
+```bash
+E2E_VISIBLE=1 E2E_HOLD_SECONDS=30 make test-smoke
+```
+
 ## Creating an extension
 
 Create a new directory inside `extra_extensions` and use [Yeoman](https://yeoman.io/) to scaffold your extension:
