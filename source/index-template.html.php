@@ -111,9 +111,32 @@ foreach($packageHacks as $hack):?>
 			vscodeAlterConfigCallbacks.push(<?php echo file_get_contents($hack); ?>);
 			<?php endforeach; endforeach; ?>
 			window.vscodeEditor = null;
+
+			let resolveVSCodeEditorReady;
+			window.vscodeEditorReady = new Promise(resolve => {
+				resolveVSCodeEditorReady = resolve;
+			});
+
 			window.vscodeExposeEditor = editor => {
 				window.vscodeEditor = editor;
+				resolveVSCodeEditorReady?.(editor);
+				resolveVSCodeEditorReady = null;
 			};
+			window.vscodeEditorReady.then(() => {
+				const searchParams = new URLSearchParams(location.search);
+				const callbackOrigin = searchParams.get('origin') || '*';
+				const callbackTarget = window.parent && window.parent !== window
+					? window.parent
+					: window.opener;
+
+				if(callbackTarget?.postMessage)
+				{
+					callbackTarget.postMessage(
+						{kind: 'vscode-react', type: 'ready'}
+						, callbackOrigin
+					);
+				}
+			});
 			window.vscodeAlterConfig = config => {
 				config.commands = config.commands || [];
 				vscodeAlterConfigCallbacks.map(callback => callback(config));
