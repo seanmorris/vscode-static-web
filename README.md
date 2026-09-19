@@ -88,6 +88,37 @@ make all serve
 
 ... and refresh the page.
 
+## Rebuilding File Bus
+
+The [File Bus](https://github.com/seanmorris/file-bus) checkout belongs in
+`extra_extensions/file-bus`. Check out the extension revision you want to serve
+and build its ignored `dist/index.js` and `hack.js` artifacts before staging it.
+From this repository's root:
+
+```bash
+npm --prefix extra_extensions/file-bus ci
+npm --prefix extra_extensions/file-bus run compile
+make all
+```
+
+`make all` copies the built extension to `public/extensions/file-bus` and
+regenerates `public/index.html`, which embeds the hack script. `make extensions`
+only copies extension files; neither target runs the extension's compiler.
+After an initial VS Code build, extension-only changes reuse the existing
+workbench build. Use `make serve` to preview the result.
+
+File Bus directory expansion and recursive search can request
+`readdir(path, {withFileTypes: true})` from the embedding app. The host should
+return plain `{name, isFolder}` entries and forward the options through its
+filesystem adapter. Hosts returning `string[]` still work through per-entry
+`analyzePath` calls. The faster path requires both this rebuilt extension and
+a host implementation supporting typed listings; publishing the embedding app
+alone does not update the VS Code host.
+
+Run `npm --prefix extra_extensions/file-bus test` for the extension's directory
+and search regressions. `make test` checks host packaging, and `make test-e2e`
+checks the built workbench. Publishing remains a separate `make deploy` step.
+
 ## Skipping extensions
 
 The shipped extension skip set now defaults from `extensions-skip.list`.
