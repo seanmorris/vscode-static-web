@@ -104,10 +104,11 @@ assert(details.gallery.itemUrl === 'https://override.item', 'Expected itemUrl ov
 assert(details.gallery.serviceUrl === 'https://override.service', 'Expected serviceUrl override.');
 assert(details.gallery.resourceUrlTemplate === 'https://override.resource/{path}', 'Expected resourceUrlTemplate override.');
 assert(details.requireBaseUrl === 'http://127.0.0.1:4173/editor/out', 'Expected require baseUrl to honor base path.');
-assert(details.baseHref === '/editor', 'Expected base href to honor configured base path.');
+assert(details.baseHref === '/editor/', 'Expected base href to preserve the configured directory for relative bundle URLs.');
 assert(Array.isArray(details.extensionPaths) && details.extensionPaths.includes('ext-a'), 'Expected ext-a in built-in extension list.');
 assert(Array.isArray(details.extensionPaths) && !details.extensionPaths.includes('ext-skip'), 'Skipped extension should not be listed.');
 assert(details.packageNls && details.packageNls.displayName === 'Extension A', 'Expected ext-a package.nls metadata.');
+assert(JSON.stringify(details.bootstrapStages) === '["nls","main","workbench"]', 'Expected production bundles to execute in dependency order.');
 EOF
 
 if [[ "$E2E_HOLD_SECONDS" != 0 ]]

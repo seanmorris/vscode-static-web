@@ -28,6 +28,7 @@ function buildFixture()
 	ensureDir(path.join(publicDir, 'extensions', 'ext-a'));
 	ensureDir(path.join(publicDir, 'extensions', 'ext-skip'));
 	ensureDir(path.join(publicDir, 'out', 'vs', 'workbench'));
+	ensureDir(path.join(publicDir, 'out', 'vs', 'code', 'browser', 'workbench'));
 	ensureDir(path.join(publicDir, 'out', 'vs'));
 
 	writeJson(path.join(publicDir, 'extensions', 'ext-a', 'package.json'), {
@@ -80,6 +81,7 @@ function buildFixture()
 			'      baseHref: document.querySelector("base")?.getAttribute("href"),',
 			'      extensionPaths: packages.map(entry => entry.extensionPath),',
 			'      packageNls: packages.find(entry => entry.extensionPath === "ext-a")?.packageNLS',
+			'      , bootstrapStages: self.__bootstrapStages',
 			'    });',
 			'    document.body.appendChild(stateNode);',
 			'  }',
@@ -118,6 +120,21 @@ function buildFixture()
 	writeFileSync(
 		path.join(publicDir, 'out', 'vs', 'webPackagePaths.js'),
 		'self.webPackagePaths = {};\n'
+	);
+
+	writeFileSync(
+		path.join(publicDir, 'out', 'vs', 'workbench', 'workbench.web.main.nls.js'),
+		'self.__bootstrapStages = ["nls"];\n'
+	);
+
+	writeFileSync(
+		path.join(publicDir, 'out', 'vs', 'workbench', 'workbench.web.main.js'),
+		'self.__bootstrapStages.push("main");\n'
+	);
+
+	writeFileSync(
+		path.join(publicDir, 'out', 'vs', 'code', 'browser', 'workbench', 'workbench.js'),
+		'self.__bootstrapStages.push("workbench"); require(["vs/code/browser/workbench/workbench"], function() {});\n'
 	);
 
 	writeFileSync(

@@ -1,0 +1,19 @@
+diff --git a/src/vs/workbench/services/extensionManagement/browser/builtinExtensionsScannerService.ts b/src/vs/workbench/services/extensionManagement/browser/builtinExtensionsScannerService.ts
+--- a/src/vs/workbench/services/extensionManagement/browser/builtinExtensionsScannerService.ts
++++ b/src/vs/workbench/services/extensionManagement/browser/builtinExtensionsScannerService.ts
+@@ -62,11 +62,13 @@ export class BuiltinExtensionsScannerService implements IBuiltinExtensionsScannerS
+ 			if (builtinExtensionsServiceUrl) {
+ 				let bundledExtensions: IBundledExtension[] = [];
+ 
+-				if (environmentService.isBuilt) {
++				// The static host stages its extensions independently of the core bundle.
++				const hasStaticExtensions = mainWindow.document.getElementById('vscode-workbench-builtin-extensions') !== null;
++				if (environmentService.isBuilt && !hasStaticExtensions) {
+ 					// Built time configuration (do NOT modify)
+ 					bundledExtensions = [/*BUILD->INSERT_BUILTIN_EXTENSIONS*/];
+ 				} else {
+-					// Find builtin extensions by checking for DOM
++					// Use the host's staged inventory in development and production.
+ 					const builtinExtensionsElement = mainWindow.document.getElementById('vscode-workbench-builtin-extensions');
+ 					const builtinExtensionsElementAttribute = builtinExtensionsElement ? builtinExtensionsElement.getAttribute('data-settings') : undefined;
+ 					if (builtinExtensionsElementAttribute) {

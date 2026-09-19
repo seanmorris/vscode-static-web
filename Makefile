@@ -4,6 +4,8 @@ ROOT_DIR:=$(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 EXTENSIONS_SKIP_FILE?=$(ROOT_DIR)/extensions-skip.list
 
 VSCODE_TAG?=1.89.0
+YARN?=yarn
+VSCODE_PATCHES:=patch/vscode.patch patch/static-extensions.patch
 ifneq ($(filter command line environment override,$(origin VSCODE_SKIP_EXTENSIONS)),)
 else
 VSCODE_SKIP_EXTENSIONS:=$(shell "$(ROOT_DIR)/scripts/read-extension-list.sh" "$(EXTENSIONS_SKIP_FILE)")
@@ -32,32 +34,29 @@ third_party/vscode/.gitignore:
 journal/.pull-dependencies: third_party/vscode/.gitignore
 	cd third_party/vscode && {\
 		echo "\033[33;4mPulling dependencies...\033[0m";\
-		git apply --no-index ../../patch/vscode.patch;\
-		yarn;\
+		$(YARN);\
 	}
 	touch journal/.pull-dependencies;
 
-## Compile the program ##
-journal/.compiled: journal/.pull-dependencies
+## Apply host integration patches, including to existing checkouts ##
+journal/.patched: journal/.pull-dependencies $(VSCODE_PATCHES) scripts/apply-vscode-patches.sh
+	./scripts/apply-vscode-patches.sh third_party/vscode $(VSCODE_PATCHES)
+	touch $@
+
+## Compile, bundle, and package the browser distribution ##
+journal/.compiled-web: journal/.patched Makefile
 	cd third_party/vscode && {\
 		echo "\033[33;4mBuilding VS Code...\033[0m";\
-		yarn compile;\
-		yarn compile-web;\
-		yarn compile-build;\
-		yarn minify-vscode & yarn minify-vscode-reh & yarn minify-vscode-reh-web;\
+		$(YARN) gulp vscode-web-min;\
 	}
-	touch journal/.compiled
+	touch $@
 
 ## Copy the static assets to public/ ##
-journal/.static-build: journal/.compiled
+journal/.static-build: journal/.compiled-web
 	@ echo "\033[33;4mBuilding Static Distribution...\033[0m"
+	mkdir -p public
 	cd public && rm -rf out node_modules resources extensions;
-	cd third_party/vscode && {\
-		find out node_modules resources extensions -type l ! -exec test -e {} \; -delete;\
-		cp -Pprf out ../../public/out;\
-		cp -Pprf node_modules resources extensions ../../public;\
-	}
-	./sync-extra-extensions.sh ./extra_extensions ./public/extensions
+	cp -a third_party/vscode-web/. public/
 	find public -type l ! -exec test -e {} \; -delete
 	touch journal/.static-build
 
@@ -97,6 +96,7 @@ test-e2e:
 		
 ## Copy extra extensions to public/extensions/ ##
 extensions: journal/.static-build
+	rsync -a --delete third_party/vscode-web/extensions/ public/extensions/
 	./sync-extra-extensions.sh ./extra_extensions ./public/extensions
 	extensions_to_skip=$$(printf '%s' '${VSCODE_SKIP_EXTENSIONS}' | tr ',' ' ' | tr -d '"'); \
 	for extension in $${extensions_to_skip}; do rm -rf "./public/extensions/$${extension}"; done

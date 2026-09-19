@@ -2,8 +2,20 @@
 <!-- Copyright (C) Microsoft Corporation. All rights reserved. -->
 <!-- Modifications for EDUCATIONAL PURPOSES by Sean Morris. -->
 <?php
-$basePath = getenv('VSCODE_BASEPATH') ?: '';
+$basePath = rtrim(getenv('VSCODE_BASEPATH') ?: '', '/');
 $skipExtensions = explode(' ', getenv('VSCODE_SKIP_EXTENSIONS'));
+$bootstrapAssets = [
+	'vs/loader.js'
+	, 'vs/webPackagePaths.js'
+	, 'vs/workbench/workbench.web.main.css'
+	, 'vs/workbench/workbench.web.main.nls.js'
+	, 'vs/workbench/workbench.web.main.js'
+	, 'vs/code/browser/workbench/workbench.js'
+];
+$assetVersion = substr(hash('sha256', implode('', array_map(
+	fn($path) => is_file('./public/out/' . $path) ? hash_file('sha256', './public/out/' . $path) : ''
+	, $bootstrapAssets
+))), 0, 16);
 
 $resourceUrlTemplate = getenv('VSCODE_RESOURCE_URL_TEMPLATE')
 	?: 'https://open-vsx.org/vscode/asset/{publisher}/{name}/{version}/Microsoft.VisualStudio.Code.WebResources/{path}';
@@ -58,6 +70,24 @@ $packages = array_filter(array_map(
 		if(file_exists($packageJSONFile))
 		{
 			$packageJSON  = json_decode(file_get_contents($packageJSONFile));
+			// Keep extension roots stable for VS Code's API identity lookup. Version
+			// the entry file instead; relative imports still resolve beside it.
+			if(isset($packageJSON->browser) && is_string($packageJSON->browser))
+			{
+				foreach([$packageJSON->browser, $packageJSON->browser . '.js', $packageJSON->browser . '/index.js'] as $browser)
+				{
+					$source = './public/extensions/' . $name . '/' . $browser;
+					if(!is_file($source)) continue;
+					$version = substr(hash_file('sha256', $source), 0, 16);
+					$versioned = preg_replace('/\.js$/', '', $browser) . '.' . $version . '.js';
+					if(!copy($source, './public/extensions/' . $name . '/' . $versioned))
+					{
+						throw new RuntimeException('Cannot stage extension entry: ' . $name);
+					}
+					$packageJSON->browser = $versioned;
+					break;
+				}
+			}
 			$entry ['packageJSON'] = $packageJSON;
 		}
 
@@ -78,7 +108,7 @@ $packages = array_filter(array_map(
 
 		<!-- Disable pinch zooming -->
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
-		<base href="<?=$basePath?>">
+		<base href="<?=$basePath?>/">
 
 		<!-- Workbench Configuration -->
 		<meta id="vscode-workbench-web-configuration" data-settings="{
@@ -119,6 +149,7 @@ foreach($packageHacks as $hack):?>
 
 			window.vscodeExposeEditor = editor => {
 				window.vscodeEditor = editor;
+				document.getElementById('loading-status')?.remove();
 				resolveVSCodeEditorReady?.(editor);
 				resolveVSCodeEditorReady = null;
 			};
@@ -164,18 +195,18 @@ foreach($packageHacks as $hack):?>
 
 		<!-- Workbench Icon/Manifest/CSS -->
 		<link rel="icon" href="/favicon.ico" type="image/x-icon" />
-		<link data-name="vs/workbench/workbench.web.main" rel="stylesheet" href="./out/vs/workbench/workbench.web.main.css" />
+		<link data-name="vs/workbench/workbench.web.main" rel="stylesheet" href="./out/vs/workbench/workbench.web.main.css?v=<?=$assetVersion?>" />
 	</head>
 
 	<body aria-label="">
 		<div
 			id = "loading-status"
-			style = "position: absolute; z-index: -1; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items:flex-start; white-space: pre; overflow: hidden; font-size: 1rem; font-family: monospace; padding: 1rem; box-sizing: border-box; background: black; color: white;"></div>
+			style = "position: absolute; z-index: -1; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items:flex-start; white-space: pre; overflow: hidden; font-size: 1rem; font-family: monospace; padding: 1rem; box-sizing: border-box; background: black; color: white;">Starting editor…</div>
 	</body>
 
 	<!-- Startup (do not modify order of script tags!) -->
-	<script src="./out/vs/loader.js"></script>
-	<script src="./out/vs/webPackagePaths.js"></script>
+	<script src="./out/vs/loader.js?v=<?=$assetVersion?>"></script>
+	<script src="./out/vs/webPackagePaths.js?v=<?=$assetVersion?>"></script>
 	<script>
 		let baseUrl = `${window.origin}<?=$basePath?>`
 		Object.keys(self.webPackagePaths).map(function (key, index) {
@@ -194,36 +225,8 @@ foreach($packageHacks as $hack):?>
 			}),
 			paths: self.webPackagePaths
 		});
-		const status = document.getElementById('loading-status');
-		const observer = new MutationObserver((mutationList, observer) => {
-			for(const mutation of mutationList)
-			{
-				if(mutation.type === "childList")
-				{
-					mutation.addedNodes.forEach(element => {
-						const prev = status.innerText;
-						switch(element.tagName)
-						{
-							case 'SCRIPT':
-								// console.log(element.getAttribute('src'));
-								status.innerText = "Loading " + element.getAttribute('src');
-								break
-							
-							case 'LINK':
-								// console.log(element.getAttribute('href'));
-								// status.innerText = "Loading " + element.getAttribute('href') + "\n" + prev;
-								break;
-								
-							default:
-								// console.log(element);
-								break;
-						}
-					});
-				}
-			}
-		});
-		observer.observe(document.head, { attributes: true, childList: true, subtree: true });
-		// observer.disconnect();
-		require(['vs/code/browser/workbench/workbench'], function() {});
 	</script>
+	<script src="./out/vs/workbench/workbench.web.main.nls.js?v=<?=$assetVersion?>"></script>
+	<script src="./out/vs/workbench/workbench.web.main.js?v=<?=$assetVersion?>"></script>
+	<script src="./out/vs/code/browser/workbench/workbench.js?v=<?=$assetVersion?>"></script>
 </html>
