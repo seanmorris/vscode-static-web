@@ -26,7 +26,7 @@ then
 		[[ -n "$previous_name" ]] || continue
 		if [[ ! -d "${SOURCE_DIR}/${previous_name}" ]]
 		then
-			rm -rf "${DEST_DIR}/${previous_name}"
+			rm -rf "${DEST_DIR:?}/${previous_name}"
 		fi
 	done < "$MANIFEST"
 fi
@@ -36,6 +36,7 @@ do
 	rsync -a --delete \
 		--delete-excluded \
 		--exclude='.git/' \
+		--exclude='.github/' \
 		--exclude='node_modules/' \
 		--exclude='src/' \
 		--exclude='test/' \

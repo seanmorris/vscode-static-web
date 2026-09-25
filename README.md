@@ -179,41 +179,102 @@ Each staging pass restores the packaged built-in extensions before applying the
 skip list, so removing an extension from that list restores it without a clean
 build.
 
-## Publish
+## Build a release
 
-Publishing is a two-part deploy:
+Release builds include the packaged VS Code built-ins, filtered by
+`extensions-skip.list`, plus **File Bus and Dbg Bus**. Their exact source commits
+are in `release-extensions.json`. `make release-extensions` clones those revisions
+into `.release-extensions/`, installs their lockfiles, and runs File Bus's tests
+and Dbg Bus's compiler. Existing checkouts in `extra_extensions/` are never reset
+or rebuilt by this target. Local examples remain available to `make all` but do
+not enter a release. Publish a newly pinned extension commit before using it in CI.
 
-1. build the static VS Code bundle into `public/`
-2. sync `public/` to the configured R2 bucket and deploy the Pages worker from `pages/`
-
-The deploy script now runs the build for you, so the normal operator entrypoint is:
-
-```bash
-make deploy
-```
-
-The script expects a local `.env` file with at least:
+Use Node 18.19.0 and Yarn Classic for the VS Code 1.89.0 build, then Node 22 for
+release tooling. On a machine with the existing workbench build:
 
 ```bash
-PROJECT_NAME=...
-BUCKET_NAME=...
-ENDPOINT=...
-CLOUDFLARE_ACCOUNT_ID=...
-CLOUDFLARE_API_TOKEN=...
+npm ci
+make release
 ```
 
-Optional deploy settings:
+For a fresh checkout, first run `make journal/.static-build` with VS Code's Node
+version, then switch to Node 22 and run the commands above. The build also needs
+PHP CLI, rsync, Git, a C/C++ toolchain and the Linux development libraries used by
+VS Code. CI records the complete package setup in `.github/workflows/release.yaml`.
+
+`make release` runs the packaging and deployment regression tests, builds the two
+selected extensions, stages the site once, and verifies the frozen artifact in a
+local Cloudflare runtime and Chromium. It checks every asset's SHA-256 digest,
+workbench startup, File Bus reads/saves/search reuse, and Dbg Bus commands. Set
+`PLAYWRIGHT_CHROMIUM_PATH` if Chromium is not at `/usr/bin/chromium`.
+
+Each artifact is `.releases/<content-id>/`, containing `assets/` and `pages/`.
+`assets/release.json` binds the file inventory, hashes, extension pins and worker.
+`.releases/latest` selects the latest local artifact. Set `RELEASE_DIR` to choose
+another one. `make verify-local-release RELEASE_DIR=...` verifies an existing
+artifact without rebuilding it.
+
+The release index uses `/releases/<content-id>/` for all bundled assets. The worker
+redirects `/` there while preserving query parameters used by embedding apps.
+Assets receive immutable cache headers, ETags, conditional GET, HEAD and byte-range
+support. The worker also caches complete immutable responses at the Cloudflare
+edge. A previous tab continues to request its own release's assets after promotion.
+
+## Preview, promote and roll back
+
+Deployment consumes the staged artifact and **does not rebuild** it:
 
 ```bash
-SOURCE_DIR=public
-PAGES_DIR=pages
-PAGES_BRANCH=master
-WRANGLER_VERSION=4.87.0
+make deploy                         # Upload R2 prefix, deploy preview, verify it
+make deploy-production              # Verify a preview, then promote the same bytes
+make deploy-verify DEPLOYMENT_URL=https://<deployment>.oss-code.pages.dev
+make rollback DEPLOYMENT_ID=<previous-successful-production-deployment-uuid>
 ```
 
-It also expects Cloudflare R2-compatible AWS credentials under `.aws/credentials`
-and `.aws/config`.
+Production promotion rechecks the stage, verifies both the unique deployment URL
+and the public URL, and automatically rolls back to the previous successful Pages
+deployment if verification fails. If another deployment takes over, or an upload
+has an uncertain outcome, the command fails with an explicit recovery message
+instead of claiming success or undoing someone else's release. Preview deploys
+never use the project's production branch. The production branch is read from the
+Pages API; `PAGES_BRANCH` is no longer used.
 
-Only runtime-ready files from `extra_extensions/` are published into
-`public/extensions/`. Local repo metadata and development dependencies like
-`.git/` and `node_modules/` are excluded from the deploy artifact.
+Every upload writes only `releases/<content-id>/` in R2. Nothing deletes the bucket
+root or previous releases. Pages rollback therefore restores matching assets as
+well as the worker. Existing unversioned assets stay readable during migration,
+so the old deployment can also be restored. Do not delete those root assets until
+legacy deployments and tabs are no longer needed. Garbage collection is a separate
+operator task: retain every release that remains a rollback target or is used by
+an open client. There is no automatic retention deletion.
+
+Deployments use the pinned Wrangler from `npm ci`, plus AWS CLI and `flock`. Local
+commands read `.env` without overwriting environment variables. CI can supply the
+same settings directly:
+
+```dotenv
+PROJECT_NAME=oss-code
+BUCKET_NAME=your-r2-bucket
+ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+CLOUDFLARE_ACCOUNT_ID=<account-id>
+CLOUDFLARE_API_TOKEN=<pages-token>
+# Optional, when the public URL is a custom domain:
+PRODUCTION_URL=https://editor.example.com
+```
+
+Use a Cloudflare token with account [Pages edit access](https://developers.cloudflare.com/pages/configuration/api/#get-an-api-token) to the selected account,
+and R2 S3 credentials with object read/write access restricted to the asset bucket.
+Supply `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_DEFAULT_REGION=auto` in
+CI. Locally, the existing `.aws/credentials` and `.aws/config` files with profile
+`r2` still work; `AWS_PROFILE` and standard AWS credential file overrides are also
+supported. Credential files are not generated, edited or packaged. Temporary
+Wrangler configuration is created outside the checkout and removed after use;
+there is no generated root `wrangler.toml` to conflict with local configuration.
+
+The GitHub workflow runs fast tests on pushes and pull requests. Its manual action
+builds and verifies one artifact, then optionally deploys a preview or production.
+Production is restricted to `master`; configure GitHub environments `preview` and
+`production` with the variables above and secrets `CLOUDFLARE_API_TOKEN`,
+`AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`. Configure any desired approval on
+the production environment. Deployment jobs are serialized without cancelling an
+in-flight release. A successful prior production deployment is required for
+promotion; first-time provisioning of an empty Pages project is separate.

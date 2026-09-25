@@ -1,0 +1,106 @@
+name: Test and release
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Build only, publish a preview, or verify and promote to production
+        type: choice
+        default: build
+        options: [build, preview, production]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: sudo apt-get update && sudo apt-get install -y php-cli rsync shellcheck
+      - run: npm ci
+      - run: make test-release
+      - run: shellcheck deploy.sh sync-extra-extensions.sh tests/real-e2e/run.sh
+
+  build:
+    if: github.event_name == 'workflow_dispatch'
+    needs: checks
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y php-cli rsync build-essential pkg-config libx11-dev libxkbfile-dev libsecret-1-dev libkrb5-dev
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # Resolve and test the source pins before spending time on the workbench.
+      - run: make release-extensions
+      # VS Code 1.89.0's build toolchain stays on its existing Node version.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.19.0'
+      - run: npm install -g yarn@1.22.22
+      - run: make journal/.static-build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: echo "PLAYWRIGHT_CHROMIUM_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - run: make release-stage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vscode-release
+          path: .releases/
+          include-hidden-files: true
+          if-no-files-found: error
+
+  deploy:
+    if: inputs.target != 'build' && (inputs.target != 'production' || github.ref == 'refs/heads/master')
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    environment: ${{ inputs.target }}
+    concurrency:
+      group: cloudflare-pages-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: vscode-release
+          path: .releases/
+      - run: npm ci
+      - run: echo "PLAYWRIGHT_CHROMIUM_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - run: make verify-local-release
+      - name: Publish and verify the staged release
+        env:
+          TARGET: ${{ inputs.target }}
+          PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+          BUCKET_NAME: ${{ vars.BUCKET_NAME }}
+          ENDPOINT: ${{ vars.ENDPOINT }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          if [[ "$TARGET" == production ]]; then
+            make deploy-production
+          else
+            make deploy
+          fi

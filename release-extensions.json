@@ -1,0 +1,10 @@
+{
+	"file-bus": {
+		"repository": "https://github.com/seanmorris/file-bus.git",
+		"revision": "14f0caa87fd4401ba4ce38e7e316abc83bf9ca14"
+	},
+	"dbg-bus": {
+		"repository": "https://github.com/seanmorris/dbg-bus.git",
+		"revision": "5be97a3c6bfd67b00127d78120ebcbf39280873e"
+	}
+}

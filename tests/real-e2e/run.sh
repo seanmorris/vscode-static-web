@@ -63,25 +63,30 @@ cleanup()
 trap cleanup EXIT
 
 cd "$ROOT_DIR"
-make all >/dev/null
+if [[ -z "${E2E_URL:-}" ]]
+then
+	make all >/dev/null
 
-cd "${ROOT_DIR}/public"
-"$PYTHON_BIN" -m http.server "$PORT" --bind 127.0.0.1 >"$SERVER_LOG" 2>&1 &
-SERVER_PID=$!
+	cd "${ROOT_DIR}/public"
+	"$PYTHON_BIN" -m http.server "$PORT" --bind 127.0.0.1 >"$SERVER_LOG" 2>&1 &
+	SERVER_PID=$!
 
-for _ in $(seq 1 60)
-do
-	if curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null 2>&1
-	then
-		break
-	fi
+	for _ in $(seq 1 60)
+	do
+		if curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null 2>&1
+		then
+			break
+		fi
 
-	sleep 1
-done
+		sleep 1
+	done
 
-curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null
+	curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null
 
-TEST_URL="http://127.0.0.1:${PORT}/"
+	TEST_URL="http://127.0.0.1:${PORT}/"
+else
+	TEST_URL="$E2E_URL"
+fi
 CHROME_ARGS=(
 	--disable-gpu
 	--no-sandbox

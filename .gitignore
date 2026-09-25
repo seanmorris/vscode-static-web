@@ -3,6 +3,9 @@
 .wrangler/
 wrangler.toml
 node_modules/
+.release-extensions/
+.releases/
+.release-tmp/
 public/
 *.log
 test-results/.last-run.json

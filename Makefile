@@ -2,6 +2,8 @@
 
 ROOT_DIR:=$(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 EXTENSIONS_SKIP_FILE?=$(ROOT_DIR)/extensions-skip.list
+EXTRA_EXTENSIONS_DIR?=$(ROOT_DIR)/extra_extensions
+RELEASE_DIR?=$(ROOT_DIR)/.releases/$(shell cat "$(ROOT_DIR)/.releases/latest" 2>/dev/null)
 
 VSCODE_TAG?=1.89.0
 YARN?=yarn
@@ -16,7 +18,7 @@ VSCODE_RESOURCE_URL_TEMPLATE?=
 VSCODE_SERVICE_URL?=
 VSCODE_ITEM_URL?=
 
-.PHONY: all serve clean clean-static extensions test test-smoke test-e2e deploy
+.PHONY: all serve clean clean-static extensions test test-smoke test-e2e test-release release release-stage release-extensions deploy deploy-production deploy-verify rollback
 
 all: public/index.html
 
@@ -44,7 +46,7 @@ journal/.patched: journal/.pull-dependencies $(VSCODE_PATCHES) scripts/apply-vsc
 	touch $@
 
 ## Compile, bundle, and package the browser distribution ##
-journal/.compiled-web: journal/.patched Makefile
+journal/.compiled-web: journal/.patched
 	cd third_party/vscode && {\
 		echo "\033[33;4mBuilding VS Code...\033[0m";\
 		$(YARN) gulp vscode-web-min;\
@@ -97,12 +99,44 @@ test-e2e:
 ## Copy extra extensions to public/extensions/ ##
 extensions: journal/.static-build
 	rsync -a --delete third_party/vscode-web/extensions/ public/extensions/
-	./sync-extra-extensions.sh ./extra_extensions ./public/extensions
+	./sync-extra-extensions.sh "$(EXTRA_EXTENSIONS_DIR)" ./public/extensions
 	extensions_to_skip=$$(printf '%s' '${VSCODE_SKIP_EXTENSIONS}' | tr ',' ' ' | tr -d '"'); \
 	for extension in $${extensions_to_skip}; do rm -rf "./public/extensions/$${extension}"; done
 	find public -type l ! -exec test -e {} \; -delete
 	touch journal/.extensions
 
-## Build and deploy to Cloudflare Pages + R2 ##
-deploy: all
-	./deploy.sh
+## Build release extensions independently of developer checkouts. ##
+release-extensions:
+	node scripts/prepare-release-extensions.mjs
+
+test-release: test
+	npm test
+
+## Build once, freeze the artifact, then test that exact release. ##
+release: test-release release-extensions
+	$(MAKE) release-stage
+
+release-stage:
+	$(MAKE) all EXTRA_EXTENSIONS_DIR="$(ROOT_DIR)/.release-extensions"
+	VSCODE_RESOURCE_URL_TEMPLATE="${VSCODE_RESOURCE_URL_TEMPLATE}" \
+	VSCODE_SERVICE_URL="${VSCODE_SERVICE_URL}" \
+	VSCODE_ITEM_URL="${VSCODE_ITEM_URL}" \
+	node scripts/release-stage.mjs
+	$(MAKE) verify-local-release RELEASE_DIR="$(ROOT_DIR)/.releases/$$(cat .releases/latest)"
+
+.PHONY: verify-local-release
+verify-local-release:
+	node scripts/verify-local-release.mjs "$(RELEASE_DIR)"
+
+## Upload a previously verified artifact; deploy defaults to preview. ##
+deploy:
+	./deploy.sh preview "$(RELEASE_DIR)"
+
+deploy-production:
+	./deploy.sh production "$(RELEASE_DIR)"
+
+deploy-verify:
+	./deploy.sh verify "$(RELEASE_DIR)" "$(DEPLOYMENT_URL)"
+
+rollback:
+	./deploy.sh rollback "$(DEPLOYMENT_ID)"

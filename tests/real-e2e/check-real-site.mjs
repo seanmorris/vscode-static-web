@@ -175,6 +175,12 @@ async function main()
 		expression: `(async () => {
 			const packages = JSON.parse(document.getElementById('vscode-workbench-builtin-extensions').dataset.settings);
 			const hasFileBus = packages.some(entry => entry.packageJSON.name === 'file-bus');
+			const hasDbgBus = packages.some(entry => entry.packageJSON.name === 'dbg-bus');
+			if(${process.env.E2E_REQUIRE_BUSES === '1'} && (!hasFileBus || !hasDbgBus)) throw new Error('Release must include File Bus and Dbg Bus');
+			if(hasDbgBus) {
+				const breakpoints = await window.vscodeEditor.commands.executeCommand('dbgBus.listBreakpoints');
+				if(!Array.isArray(breakpoints)) throw new Error('Dbg Bus did not return its breakpoints');
+			}
 			const scriptCount = [...document.scripts].filter(script => script.src).length;
 			if(scriptCount > 100) throw new Error('Workbench loaded individual source modules instead of production bundles: ' + scriptCount);
 			if(hasFileBus) {
@@ -205,7 +211,7 @@ async function main()
 				if(window.fileBusTestHost.calls.filter(call => call.action === 'readdir').length !== listingCount) throw new Error('Typing a new Quick Open query repeated filesystem traversal');
 			}
 			return {
-				scriptCount, fileBus: hasFileBus ? 'read, save, and search reuse passed' : 'not staged',
+				scriptCount, fileBus: hasFileBus ? 'read, save, and search reuse passed' : 'not staged', dbgBus: hasDbgBus ? 'commands passed' : 'not staged',
 				marks: performance.getEntriesByType('mark').filter(mark => ['code/didStartWorkbench', 'filebus/activated'].includes(mark.name)).map(mark => ({name: mark.name, ms: mark.startTime}))
 			};
 		})()`,

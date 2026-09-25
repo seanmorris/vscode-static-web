@@ -3,6 +3,7 @@
 <!-- Modifications for EDUCATIONAL PURPOSES by Sean Morris. -->
 <?php
 $basePath = rtrim(getenv('VSCODE_BASEPATH') ?: '', '/');
+$publicDir = rtrim(getenv('VSCODE_PUBLIC_DIR') ?: './public', '/');
 $skipExtensions = explode(' ', getenv('VSCODE_SKIP_EXTENSIONS'));
 $bootstrapAssets = [
 	'vs/loader.js'
@@ -13,7 +14,7 @@ $bootstrapAssets = [
 	, 'vs/code/browser/workbench/workbench.js'
 ];
 $assetVersion = substr(hash('sha256', implode('', array_map(
-	fn($path) => is_file('./public/out/' . $path) ? hash_file('sha256', './public/out/' . $path) : ''
+	fn($path) => is_file($publicDir . '/out/' . $path) ? hash_file('sha256', $publicDir . '/out/' . $path) : ''
 	, $bootstrapAssets
 ))), 0, 16);
 
@@ -27,18 +28,18 @@ $itemUrl = getenv('VSCODE_ITEM_URL')
 	?: 'https://open-vsx.org/vscode/item';
 
 $extDirs = array_filter(
-	scanDir('./public/extensions')
+	scanDir($publicDir . '/extensions')
 	, fn($name) => (
 		!in_array($name, $skipExtensions)
 		&& $name !== '.'
 		&& $name !== '..'
-		&& file_exists('./public/extensions/' . $name . '/package.json')
+		&& file_exists($publicDir . '/extensions/' . $name . '/package.json')
 	)
 );
 
 $hacks = array_map(
-	function($name){
-		$packageDir = './public/extensions/' . $name;
+	function($name) use($publicDir){
+		$packageDir = $publicDir . '/extensions/' . $name;
 		$packageJSONFile = $packageDir . '/package.json';
 		$packageJSON = json_decode(file_get_contents($packageJSONFile));
 
@@ -58,10 +59,10 @@ $hacks = array_map(
 );
 
 $packages = array_filter(array_map(
-	function($name) use($skipExtensions)
+	function($name) use($skipExtensions, $publicDir)
 	{
-		$packageJSONFile = './public/extensions/' . $name . '/package.json';
-		$packageNLSFile  = './public/extensions/' . $name . '/package.nls.json';
+		$packageJSONFile = $publicDir . '/extensions/' . $name . '/package.json';
+		$packageNLSFile  = $publicDir . '/extensions/' . $name . '/package.nls.json';
 
 		$packageJSON = json_decode(file_get_contents($packageJSONFile));
 
@@ -76,11 +77,11 @@ $packages = array_filter(array_map(
 			{
 				foreach([$packageJSON->browser, $packageJSON->browser . '.js', $packageJSON->browser . '/index.js'] as $browser)
 				{
-					$source = './public/extensions/' . $name . '/' . $browser;
+					$source = $publicDir . '/extensions/' . $name . '/' . $browser;
 					if(!is_file($source)) continue;
 					$version = substr(hash_file('sha256', $source), 0, 16);
 					$versioned = preg_replace('/\.js$/', '', $browser) . '.' . $version . '.js';
-					if(!copy($source, './public/extensions/' . $name . '/' . $versioned))
+					if(!copy($source, $publicDir . '/extensions/' . $name . '/' . $versioned))
 					{
 						throw new RuntimeException('Cannot stage extension entry: ' . $name);
 					}
@@ -194,7 +195,7 @@ foreach($packageHacks as $hack):?>
 		<meta id="vscode-workbench-auth-session" data-settings="" />
 
 		<!-- Workbench Icon/Manifest/CSS -->
-		<link rel="icon" href="/favicon.ico" type="image/x-icon" />
+		<link rel="icon" href="./favicon.ico" type="image/x-icon" />
 		<link data-name="vs/workbench/workbench.web.main" rel="stylesheet" href="./out/vs/workbench/workbench.web.main.css?v=<?=$assetVersion?>" />
 	</head>
 
