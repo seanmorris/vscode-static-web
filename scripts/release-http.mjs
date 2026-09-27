@@ -46,6 +46,22 @@ export async function verifyRemote(stage, baseUrl, transport = request)
 	finally { controller.abort(); }
 }
 
+/** Choose a usable cache validator after any Cloudflare response transformations. */
+function conditionalHeaders(headers, file)
+{
+	const etag = headers.get('etag');
+	if(etag)
+	{
+		assert(/^(?:W\/)?"[^"\r\n]*"$/.test(etag), `Invalid ETag validator: ${file}`);
+		return {'If-None-Match': etag};
+	}
+	// Cloudflare can strip HTML ETags even when the response bytes are unchanged.
+	// SHA-256 checks still establish asset identity; this checks revalidation.
+	const modified = headers.get('last-modified');
+	assert(modified && Number.isFinite(Date.parse(modified)), `Missing or invalid cache validator (ETag or Last-Modified): ${file}`);
+	return {'If-Modified-Since': modified};
+}
+
 /** Verify one immutable asset inventory within the caller's deadline. */
 async function verifyAssets(stage, baseUrl, transport)
 {
@@ -65,12 +81,14 @@ async function verifyAssets(stage, baseUrl, transport)
 			const file = manifest.assets[next++];
 			const response = await transport(prefix + file.path.split('/').map(encodeURIComponent).join('/'), {headers: {'Accept-Encoding': 'identity'}});
 			assert(response.status === 200 && response.bytes.length === file.bytes && digest(response.bytes) === file.sha256, `Asset verification failed: ${file.path} (HTTP ${response.status})`);
-			assert(response.headers.get('cache-control')?.includes('immutable') && response.headers.has('etag'), `Missing immutable asset headers: ${file.path}`);
+			assert(response.headers.get('cache-control')?.includes('immutable'), `Missing immutable cache policy: ${file.path}`);
+			conditionalHeaders(response.headers, file.path);
 		}
 	}));
 	const head = await transport(prefix + 'index.html', {method: 'HEAD'});
 	assert(head.status === 200 && head.bytes.length === 0, 'HEAD smoke failed');
-	const conditional = await transport(prefix + 'index.html', {headers: {'If-None-Match': head.headers.get('etag')}});
-	assert(conditional.status === 304, 'Conditional GET smoke failed');
+	const headers = conditionalHeaders(head.headers, 'index.html (HEAD)');
+	const conditional = await transport(prefix + 'index.html', {headers});
+	assert(conditional.status === 304, `Conditional GET smoke failed: index.html using ${Object.keys(headers)[0]} (HTTP ${conditional.status})`);
 	return {releaseId: manifest.releaseId, files: manifest.assets.length, url: origin};
 }

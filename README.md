@@ -208,6 +208,12 @@ local Cloudflare runtime and Chromium. It checks every asset's SHA-256 digest,
 workbench startup, File Bus reads/saves/search reuse, and Dbg Bus commands. Set
 `PLAYWRIGHT_CHROMIUM_PATH` if Chromium is not at `/usr/bin/chromium`.
 
+Remote verification checks every asset's digest and immutable cache policy, then
+tests conditional GET using the validator exposed by the server. It uses ETag
+when available and falls back to Last-Modified when Cloudflare removes ETag from
+an HTML response. Missing validators, changed bytes, and failed revalidation still
+fail the release. See [Cloudflare's ETag behavior](https://developers.cloudflare.com/cache/reference/etag-headers/).
+
 Each artifact is `.releases/<content-id>/`, containing `assets/` and `pages/`.
 `assets/release.json` binds the file inventory, hashes, extension pins and worker.
 `.releases/latest` selects the latest local artifact. Set `RELEASE_DIR` to choose
